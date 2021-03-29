@@ -5,8 +5,9 @@ class Map:
     colors = [u'\u001b[47m', u'\u001b[43m', u'\u001b[42m', u'\u001b[40m']
     reset = u'\u001b[0m'
     red = u'\u001b[31m'
-    probs = [.1, .3, .7, .9]
+    false_negative_probs = [.1, .3, .7, .9]
     num_searches = 0
+    observations = []
 
     def __init__(self):
         dim = 50
@@ -31,15 +32,18 @@ class Map:
             print()
 
     def update_belief(self, failure_coords):
-        # TODO: update belief P(Target in Cell i | Observations t ^ Failure in Cell j) for each cell
-        for row in self.belief:
-            for cell in row:
-                print(cell)
+        # add new failed search to observations
+        self.observations.append(failure_coords)
+        # for each cell i, update our belief P(Target in Cell i | Observations and Failure in Cell j)
+        dim = len(self.belief)
+        for i in range(dim):
+            for j in range(dim):
+                print(i, j)
 
     def search(self, coords):
         self.num_searches += 1
         cell = self.map[coords[0]][coords[1]]
-        if cell < 4 or not random.random() < self.probs[cell - 4]:
+        if cell < 4 or not random.random() < self.false_negative_probs[cell - 4]:
             self.update_belief(coords)
             return False
         else:
