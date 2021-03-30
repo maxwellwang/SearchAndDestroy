@@ -1,10 +1,18 @@
 from util import *
 
-a_map = Map()
-a_map.print_map()
+results = []
 
-found = False
-while not found:
-    found = a_map.search_best_cell(use_found=False)
-    print(a_map.num_searches, a_map.last_searched, a_map.last_result)
-print(a_map.num_searches)
+for _ in range(10):
+    a_map = Map()
+
+    ba1 = BasicAgent1(a_map)
+    ba1.run()
+
+    a_map.reset_map()
+
+    ba2 = BasicAgent2(a_map)
+    ba2.run()
+
+    results.append((ba1.score, ba2.score))
+
+print(results)
