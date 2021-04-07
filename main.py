@@ -7,11 +7,11 @@ def run_trial():
     a_map = Map()
     ba1 = BasicAgent1(a_map)
 
-    ba1.run(debug = True)
+    ba1.run(debug=True)
     a_map.reset_map()
 
     ba2 = BasicAgent2(a_map)
-    ba2.run(debug = True)
+    ba2.run(debug=True)
     return ba1.score, ba2.score
 
 

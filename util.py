@@ -65,7 +65,8 @@ class Map:
             -----------------------------------------------------------------------------
             1 + P(Failure in Cell j | Target in Cell j) * Belief[Cell j] - Belief[Cell j]
             """
-            return fail_given_target * belief_failed_cell / (1 + fail_given_target * belief_failed_cell - belief_failed_cell)
+            return fail_given_target * belief_failed_cell / (
+                    1 + fail_given_target * belief_failed_cell - belief_failed_cell)
         else:
             """
             Case 1: i != j
@@ -99,7 +100,7 @@ class Map:
             for j in range(self.dim):
                 self.found_belief[i][j] = self.compute_found_belief(i, j)
 
-    def search(self, coords, use_found = False):
+    def search(self, coords, use_found=False):
         # Searches some given cell and either returns True if found or False and updates information
         self.last_searched = coords
         self.num_searches += 1
@@ -114,8 +115,8 @@ class Map:
         else:
             return True
 
-    def best_cell(self, use_found):
-        table = self.found_belief if use_found else self.belief
+    def best_cell(self, agent_num):
+        table = self.belief if agent_num == 1 else self.found_belief
         # Pick the next cell to search
         max_prob, min_dist = 0, self.dim * 2
         cells = []
@@ -146,15 +147,15 @@ class Map:
             s = sum([sum(row) for row in self.belief])
             if not 0.99 < s < 1.01:
                 self.belief = [[p / s for p in row] for row in self.belief]
-                print ("Normalizing! " + str(s) + " " + str(self.num_searches))
+                print("Normalizing! " + str(s) + " " + str(self.num_searches))
 
-    def search_best_cell(self, use_found=False):
+    def search_best_cell(self, agent_num):
         self.normalize()
         # Searches some particular cell and does appropriate updates
-        return self.search(self.best_cell(use_found=use_found), use_found=use_found)
+        return self.search(self.best_cell(agent_num), agent_num)
 
     def reset_map(self):
-        # Resets map back to initial state
+        # Resets map and beliefs back to initial state
         self.belief = [[1 / (self.dim * self.dim) for _ in range(self.dim)] for _ in range(self.dim)]
         self.found_belief = [[self.compute_found_belief(i, j) for i in range(self.dim)] for j in range(self.dim)]
         self.agent = self.agent_spawn
@@ -168,10 +169,10 @@ class BasicAgent1:
         self.map = a_map
         self.score = 0
 
-    def run(self, debug = False):
+    def run(self, debug=False):
         found = False
         while not found:
-            found = self.map.search_best_cell(use_found=False)
+            found = self.map.search_best_cell(1)
             # if debug: print(self.map.num_searches, self.map.last_searched)
             # s = sum([sum(r) for r in self.map.belief])
             # if not 0.95 < s < 1.05:
@@ -190,13 +191,30 @@ class BasicAgent2:
         self.map = a_map
         self.score = 0
 
-    def run(self, debug = False):
+    def run(self, debug=False):
         found = False
         while not found:
-            found = self.map.search_best_cell(use_found=True)
+            found = self.map.search_best_cell(2)
             # if debug: print(self.map.num_searches, self.map.last_searched)
         self.score = self.map.distance_traveled + self.map.num_searches
 
         if debug:
             print('Basic Agent 2 Score: ' + str(self.score) + " Dist: " + str(
+                self.map.distance_traveled) + " Search: " + str(self.map.num_searches))
+
+
+class ImprovedAgent3:
+    def __init__(self, a_map):
+        self.map = a_map
+        self.score = 0
+
+    def run(self, debug=False):
+        found = False
+        while not found:
+            found = self.map.search_best_cell(3)
+            # if debug: print(self.map.num_searches, self.map.last_searched)
+        self.score = self.map.distance_traveled + self.map.num_searches
+
+        if debug:
+            print('Basic Agent 3 Score: ' + str(self.score) + " Dist: " + str(
                 self.map.distance_traveled) + " Search: " + str(self.map.num_searches))
