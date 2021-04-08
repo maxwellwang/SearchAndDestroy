@@ -22,6 +22,9 @@ class Map:
         self.belief = [[1 / (self.dim * self.dim) for _ in range(self.dim)] for _ in range(self.dim)]
         # for each cell, use compute probability target will be found in cell
         self.found_belief = [[self.compute_found_belief(i, j) for i in range(self.dim)] for j in range(self.dim)]
+        # agent 3 will simulate the next search so it can pick better candidate to search next
+        self.next_belief = None
+        self.next_found_belief = None
         # randomly place agent
         self.agent_spawn = (random.randrange(self.dim), random.randrange(self.dim))
         self.agent = self.agent_spawn
@@ -49,14 +52,15 @@ class Map:
                 print(str(Fraction(cell).limit_denominator()) + ' ', end='')
             print()
 
-    def compute_belief(self, update_cell, failed_cell):
+    def compute_belief(self, update_cell, failed_cell, simulate=False):
+        table = self.next_belief if simulate else self.belief
         # we will call the newest failure cell: cell j
         # P(Failure in Cell j | Target in Cell j)
         fail_given_target = self.false_negative_probs[self.map[failed_cell[0]][failed_cell[1]]]
         # P(Target in Cell j | Observations)
-        belief_failed_cell = self.belief[failed_cell[0]][failed_cell[1]]
+        belief_failed_cell = table[failed_cell[0]][failed_cell[1]]
         # P(Target in Cell i | Observations)
-        belief_update_cell = self.belief[update_cell[0]][update_cell[1]]
+        belief_update_cell = table[update_cell[0]][update_cell[1]]
         # P(Target in Cell i | Observations and Failure in Cell j)
         if update_cell == failed_cell:
             """
@@ -76,9 +80,10 @@ class Map:
             """
             return belief_update_cell / (1 + fail_given_target * belief_failed_cell - belief_failed_cell)
 
-    def compute_found_belief(self, i, j):
+    def compute_found_belief(self, i, j, simulate=False):
+        table = self.next_belief if simulate else self.belief
         # P(Target in Cell ij | Observations)
-        belief_update_cell = self.belief[i][j]
+        belief_update_cell = table[i][j]
         # P(Failure in Cell ij | Target in Cell ij)
         fail_given_target = self.false_negative_probs[self.map[i][j]]
         """
@@ -86,45 +91,56 @@ class Map:
         """
         return belief_update_cell * (1 - fail_given_target)
 
-    def update_belief(self, failure_coords):
+    def update_belief(self, failure_coords, simulate=False):
         # For each cell, update our belief. See writeup to see how it was computed
+        table = self.next_belief if simulate else self.belief
         for i in range(self.dim):
             for j in range(self.dim):
                 if (i, j) != failure_coords:
-                    self.belief[i][j] = self.compute_belief((i, j), failure_coords)
-        self.belief[failure_coords[0]][failure_coords[1]] = self.compute_belief(failure_coords, failure_coords)
+                    table[i][j] = self.compute_belief((i, j), failure_coords, simulate)
+        table[failure_coords[0]][failure_coords[1]] = self.compute_belief(failure_coords, failure_coords, simulate)
 
-    def update_found_belief(self):
+    def update_found_belief(self, coords, simulate=False):
         # For each cell, update our belief of found probability. See writeup to see how it was computed
+        table = self.next_found_belief if simulate else self.found_belief
+        self.update_belief(coords, simulate)
         for i in range(self.dim):
             for j in range(self.dim):
-                self.found_belief[i][j] = self.compute_found_belief(i, j)
+                table[i][j] = self.compute_found_belief(i, j, simulate)
 
-    def search(self, coords, use_found=False):
+    def search(self, coords, agent_num):
         # Searches some given cell and either returns True if found or False and updates information
         self.last_searched = coords
         self.num_searches += 1
         self.distance_traveled += dist(coords, self.agent)
         self.agent = coords
         cell = self.map[coords[0]][coords[1]]
-        if cell < 4 or random.random() >= self.false_negative_probs[cell]:
-            self.update_belief(coords)
-            if use_found:
-                self.update_found_belief()
+        if cell < 4 or random.random() < self.false_negative_probs[cell]:
+            if agent_num == 1:
+                self.update_belief(coords)
+            elif agent_num == 2 or agent_num == 3:
+                self.update_found_belief(coords)
             return False
         else:
             return True
 
-    def best_cell(self, agent_num):
-        table = self.belief if agent_num == 1 else self.found_belief
+    def next_cost(self, coords):
+        self.next_belief = self.belief.copy()
+        self.next_found_belief = self.found_belief.copy()
+        self.update_found_belief(coords, simulate=True)
+        next_cell = self.best_cell(3, simulate=True)
+        return dist(self.agent, next_cell)
+
+    def best_cell(self, agent_num, simulate=False):
+        table = self.next_found_belief if simulate else (self.belief if agent_num == 1 else self.found_belief)
         # Pick the next cell to search
         max_prob, min_dist = 0, self.dim * 2
-        cells = []
+        candidates = []
         for i, row in enumerate(table):
             for j, prob in enumerate(row):
                 if prob > max_prob:
                     # If cell with better chance found, then remove all old candidates and update max_prob and min_dist
-                    cells = [(i, j)]
+                    candidates = [(i, j)]
                     max_prob = prob
                     min_dist = dist((i, j), self.agent)
                 elif prob == max_prob:
@@ -132,14 +148,27 @@ class Map:
                     new_dist = dist((i, j), self.agent)
                     if new_dist < min_dist:
                         # If it's closer, remove all old candidates and update min_dist
-                        cells = [(i, j)]
+                        candidates = [(i, j)]
                         min_dist = new_dist
                     else:
                         # If it's the same distance, add cell to candidate list
-                        cells.append((i, j))
+                        candidates.append((i, j))
 
-        # Choose a random candidate cell to search
-        return cells[random.randrange(len(cells))]
+        if agent_num == 1 or agent_num == 2 or simulate:
+            # Choose a random candidate cell to search
+            return candidates[random.randrange(len(candidates))]
+        elif agent_num == 3:
+            # instead of randomly picking, simulate 1 search into the future for each candidate
+            # and pick candidate with min distance to this next search's randomly picked best candidate
+            # assuming current search fails
+            min_cost = self.dim * self.dim
+            min_index = 0
+            for i in range(len(candidates)):
+                cost = self.next_cost(candidates[i])
+                if cost < min_cost:
+                    min_cost = cost
+                    min_index = i
+            return candidates[min_index]
 
     def normalize(self):
         # Normalize matrix for error correction purposes due to floating point error
@@ -173,11 +202,13 @@ class BasicAgent1:
         found = False
         while not found:
             found = self.map.search_best_cell(1)
-            # if debug: print(self.map.num_searches, self.map.last_searched)
+            # if debug:
+            # print(self.map.num_searches, self.map.last_searched)
             # s = sum([sum(r) for r in self.map.belief])
+            # print(s)
             # if not 0.95 < s < 1.05:
-            #     print("Sum out of bounds: " + str(s))
-            #     self.map.print_belief()
+            # print("Sum out of bounds: " + str(s))
+            # self.map.print_belief()
 
         self.score = self.map.distance_traveled + self.map.num_searches
 
@@ -195,6 +226,13 @@ class BasicAgent2:
         found = False
         while not found:
             found = self.map.search_best_cell(2)
+            # if debug:
+            # print(self.map.num_searches, self.map.last_searched)
+            # s = sum([sum(r) for r in self.map.belief])
+            # print(s)
+            # if not 0.95 < s < 1.05:
+            # print("Sum out of bounds: " + str(s))
+            # self.map.print_belief()
             # if debug: print(self.map.num_searches, self.map.last_searched)
         self.score = self.map.distance_traveled + self.map.num_searches
 
@@ -216,5 +254,5 @@ class ImprovedAgent3:
         self.score = self.map.distance_traveled + self.map.num_searches
 
         if debug:
-            print('Basic Agent 3 Score: ' + str(self.score) + " Dist: " + str(
+            print('Improved Agent 3 Score: ' + str(self.score) + " Dist: " + str(
                 self.map.distance_traveled) + " Search: " + str(self.map.num_searches))
