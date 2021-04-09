@@ -7,7 +7,7 @@ def dist(cell1, cell2):
 
 
 class Map:
-    dim = 50
+    dim = 40
     colors = [u'\u001b[47m', u'\u001b[43m', u'\u001b[42m', u'\u001b[40m']
     reset = u'\u001b[0m'
     red = u'\u001b[31m'
@@ -132,12 +132,12 @@ class Map:
             return True
 
     def next_cost(self, coords):
-        self.next_belief = self.belief.copy()
-        self.next_found_belief = self.found_belief.copy()
+        self.next_belief = [r[:] for r in self.belief]
+        self.next_found_belief = [r[:] for r in self.found_belief]
         self.update_found_belief(coords, simulate=True)
-        return dist(coords, self.best_cell(3, simulate=True)) + 1
+        return dist(coords, self.best_cell(3, simulate=True, coords = coords)) + 1
 
-    def best_cell(self, agent_num, simulate=False):
+    def best_cell(self, agent_num, simulate=False, coords = None):
         table = self.next_found_belief if simulate else (self.belief if agent_num == 1 else self.found_belief)
         # Pick the next cell to search
         max_prob, min_dist = 0, self.dim * 2
@@ -148,10 +148,10 @@ class Map:
                     # If cell with better chance found, then remove all old candidates and update max_prob and min_dist
                     candidates = [(i, j)]
                     max_prob = prob
-                    min_dist = dist((i, j), self.agent)
+                    min_dist = dist((i, j), self.agent if not coords else coords)
                 elif prob == max_prob:
                     # If cell with equal chance found, then compare distances
-                    new_dist = dist((i, j), self.agent)
+                    new_dist = dist((i, j), self.agent if not coords else coords)
                     if new_dist < min_dist:
                         # If it's closer, remove all old candidates and update min_dist
                         candidates = [(i, j)]
