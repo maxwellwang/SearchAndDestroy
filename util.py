@@ -163,14 +163,14 @@ class Map:
         if agent_num == 1 or agent_num == 2 or simulate:
             return candidates[random.randrange(len(candidates))]
         elif agent_num == 3:
-            # utility = cost(search 1) + cost(simulated search 2) -> pick candidate with minimum utility
-            min_utility = self.dim * self.dim * 1.0
+            # pick candidate with minimum next_cost
+            min_next_cost = self.dim * 2
             min_index = 0
             for i in range(len(candidates)):
                 candidate = candidates[i]
-                utility = dist(self.agent, candidate) + 1 + self.next_cost(candidate)
-                if utility < min_utility:
-                    min_utility = utility
+                next_cost = self.next_cost(candidate)
+                if next_cost < min_next_cost:
+                    min_next_cost = next_cost
                     min_index = i
             return candidates[min_index]
 
