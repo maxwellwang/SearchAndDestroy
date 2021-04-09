@@ -52,6 +52,13 @@ class Map:
                 print(str(Fraction(cell).limit_denominator()) + ' ', end='')
             print()
 
+    def sum_prob(self, table):
+        sum = 0.0
+        for row in table:
+            for prob in row:
+                sum += prob
+        return sum
+
     def compute_belief(self, update_cell, failed_cell, simulate=False):
         table = self.next_belief if simulate else self.belief
         # we will call the newest failure cell: cell j
@@ -128,8 +135,7 @@ class Map:
         self.next_belief = self.belief.copy()
         self.next_found_belief = self.found_belief.copy()
         self.update_found_belief(coords, simulate=True)
-        next_cell = self.best_cell(3, simulate=True)
-        return dist(self.agent, next_cell)
+        return dist(coords, self.best_cell(3, simulate=True)) + 1
 
     def best_cell(self, agent_num, simulate=False):
         table = self.next_found_belief if simulate else (self.belief if agent_num == 1 else self.found_belief)
@@ -155,18 +161,16 @@ class Map:
                         candidates.append((i, j))
 
         if agent_num == 1 or agent_num == 2 or simulate:
-            # Choose a random candidate cell to search
             return candidates[random.randrange(len(candidates))]
         elif agent_num == 3:
-            # instead of randomly picking, simulate 1 search into the future for each candidate
-            # and pick candidate with min distance to this next search's randomly picked best candidate
-            # assuming current search fails
-            min_cost = self.dim * self.dim
+            # utility = cost(search 1) + cost(simulated search 2) -> pick candidate with minimum utility
+            min_utility = self.dim * self.dim * 1.0
             min_index = 0
             for i in range(len(candidates)):
-                cost = self.next_cost(candidates[i])
-                if cost < min_cost:
-                    min_cost = cost
+                candidate = candidates[i]
+                utility = dist(self.agent, candidate) + 1 + self.next_cost(candidate)
+                if utility < min_utility:
+                    min_utility = utility
                     min_index = i
             return candidates[min_index]
 

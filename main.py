@@ -40,15 +40,4 @@ def run_search():
 
 if __name__ == "__main__":
     # run_search()
-    a_map = Map()
-
-    ba1 = BasicAgent1(a_map)
-    ba1.run(debug=True)
-    a_map.reset_map()
-
-    ba2 = BasicAgent2(a_map)
-    ba2.run(debug=True)
-    a_map.reset_map()
-
-    ba3 = ImprovedAgent3(a_map)
-    ba3.run(debug=True)
+    run_trial()
