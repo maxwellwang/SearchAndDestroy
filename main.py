@@ -4,7 +4,7 @@ import concurrent.futures
 
 
 def run_trial():
-    a_map = Map()
+    a_map = Map(bonus = True)
 
     ba1 = BasicAgent1(a_map)
     ba1.run(debug=True)
@@ -36,8 +36,9 @@ def run_search():
 
     print("Time: " + str(time.time() - t))
     print(results)
-
+    for r in results:
+        print(str(r[0]) + ", " + str(r[1]) + ", " + str(r[2]))
 
 if __name__ == "__main__":
-    # run_search()
-    run_trial()
+    run_search()
+    # run_trial()
